@@ -35,38 +35,38 @@ class MatomoTracker {
       urlBase = urlBase + '/'
     }
 
-    if (typeof window !== 'undefined') {
-      window._paq = window._paq || []
+    if (typeof window === 'undefined') return
+    
+    window._paq = window._paq || []
 
-      if (window._paq.length === 0) {
-        window._paq.push([
-          'setTrackerUrl',
-          trackerUrl || `${urlBase}matomo.php`,
-        ])
-        window._paq.push(['setSiteId', siteId])
+    if (window._paq.length) return
+    
+    window._paq.push([
+      'setTrackerUrl',
+      trackerUrl || `${urlBase}matomo.php`,
+    ])
+    window._paq.push(['setSiteId', siteId])
 
-        // accurately measure the time spent on the last pageview of a visit
-        if (!heartBeat || (heartBeat && heartBeat.active)) {
-          this.enableHeartBeatTimer(15 || (heartBeat && heartBeat.seconds))
-        }
+    // accurately measure the time spent on the last pageview of a visit
+    if (!heartBeat || (heartBeat && heartBeat.active)) {
+      this.enableHeartBeatTimer(15 || (heartBeat && heartBeat.seconds))
+    }
 
-        // // measure outbound links and downloads
-        // // might not work accurately on SPAs because new links (dom elements) are created dynamically without a server-side page reload.
-        this.enableLinkTracking(linkTracking)
+    // // measure outbound links and downloads
+    // // might not work accurately on SPAs because new links (dom elements) are created dynamically without a server-side page reload.
+    this.enableLinkTracking(linkTracking)
 
-        const doc = document
-        const scriptElement = doc.createElement('script')
-        const scripts = doc.getElementsByTagName('script')[0]
+    const doc = document
+    const scriptElement = doc.createElement('script')
+    const scripts = doc.getElementsByTagName('script')[0]
 
-        scriptElement.type = 'text/javascript'
-        scriptElement.async = true
-        scriptElement.defer = true
-        scriptElement.src = srcUrl || `${urlBase}matomo.js`
+    scriptElement.type = 'text/javascript'
+    scriptElement.async = true
+    scriptElement.defer = true
+    scriptElement.src = srcUrl || `${urlBase}matomo.js`
 
-        if (scripts && scripts.parentNode) {
-          scripts.parentNode.insertBefore(scriptElement, scripts)
-        }
-      }
+    if (scripts && scripts.parentNode) {
+      scripts.parentNode.insertBefore(scriptElement, scripts)
     }
   }
 
@@ -77,36 +77,36 @@ class MatomoTracker {
   static enableLinkTracking(active: boolean) {
     window._paq.push(['enableLinkTracking', active])
   }
+  
+  static trackClickEvent(element) {
+    element.addEventListener('click', () => {
+      const {
+        matomoCategory,
+        matomoAction,
+        matomoName,
+        matomoValue,
+      } = element.dataset
+      if (matomoCategory && matomoAction) {
+        this.trackEvent({
+          category: matomoCategory,
+          action: matomoAction,
+          name: matomoName,
+          value: Number(matomoValue),
+        })
+      } else {
+        throw new Error(
+          `Error: data-matomo-category and data-matomo-action are required.`,
+        )
+      }
+    })
+  }
 
   // Tracks events based on data attributes
   trackEvents() {
-    const elements = Array.from(
-      document.querySelectorAll<HTMLElement>('[data-matomo-event="click"]'),
-    )
-    if (elements.length) {
-      elements.forEach((element) => {
-        element.addEventListener('click', () => {
-          const {
-            matomoCategory,
-            matomoAction,
-            matomoName,
-            matomoValue,
-          } = element.dataset
-          if (matomoCategory && matomoAction) {
-            this.trackEvent({
-              category: matomoCategory,
-              action: matomoAction,
-              name: matomoName,
-              value: Number(matomoValue),
-            })
-          } else {
-            throw new Error(
-              `Error: data-matomo-category and data-matomo-action are required.`,
-            )
-          }
-        })
-      })
-    }
+    const elements = [...document.querySelectorAll<HTMLElement>('[data-matomo-event="click"]')]
+    if (!elements.length) return
+    
+    elements.forEach((element) => this.trackClickEvent(element))
   }
 
   // Tracks events
@@ -238,25 +238,24 @@ class MatomoTracker {
     href = window.location.href,
     customDimensions = false,
   }: TrackParams) {
-    if (data.length) {
-      if (
-        customDimensions &&
-        Array.isArray(customDimensions) &&
-        customDimensions.length
-      ) {
-        customDimensions.map((customDimension: CustomDimension) =>
-          window._paq.push([
-            'setCustomDimension',
-            customDimension.id,
-            customDimension.value,
-          ]),
-        )
-      }
-
-      window._paq.push(['setCustomUrl', href])
-      window._paq.push(['setDocumentTitle', documentTitle])
-      window._paq.push(data)
+    if (!data.length) return
+    if (
+      customDimensions &&
+      Array.isArray(customDimensions) &&
+      customDimensions.length
+    ) {
+      customDimensions.map((customDimension: CustomDimension) =>
+        window._paq.push([
+          'setCustomDimension',
+          customDimension.id,
+          customDimension.value,
+        ]),
+      )
     }
+
+    window._paq.push(['setCustomUrl', href])
+    window._paq.push(['setDocumentTitle', documentTitle])
+    window._paq.push(data)
   }
 }
 
